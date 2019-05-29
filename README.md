@@ -7,9 +7,13 @@ FAME was trained using linear regression (sklearn.linear_model.Lasso) with 10-fo
 
 ### fame_model:
 **FAME_training.py**: used for training the FAME model. Input is a landmark file. Outputs a coefficient, intercept, and scale factors file, located in the folder **saved_model**.
+
 **FAME_run.py**: runs a trained model on a landmark mile. Input is landmark, coefficient, interectpt, and scale factors files. Outputs the predictions in the folder **predictions**.
+
 **FAME_performance_analysis.ipynb**: analyzes prediction results from the model, and gives information on error, gender classifcication accuracy, and results of the most masculine & feminine faces
+
 **important_landmarks_v4**: a visual of the 8 landmarks that had weights of the highest magnitude
+
 **landmarks**: contains files for landmark detection using dlib. **face_landmark_detection_FAME.py** builds off of existing code from http://dlib.net/face_landmark_detection.py.html and outputs a csv file with the filenames, FAME ratings, and landmark information. **face_landmark_detection.py** does the same thing but without the FAME ratings
 
 ### mturk_surveys:
