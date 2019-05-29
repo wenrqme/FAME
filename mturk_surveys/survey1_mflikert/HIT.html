@@ -1,0 +1,60 @@
+<!-- Bootstrap v3.0.3 -->
+<link href="https://s3.amazonaws.com/mturk-public/bs30/css/bootstrap.min.css" rel="stylesheet" />
+<section class="container" id="Survey" style="margin-bottom:15px; padding: 10px 10px; font-family: Verdana, Geneva, sans-serif; color:#333333; font-size:0.9em;">
+<div class="row col-xs-12 col-md-12"><!-- Instructions -->
+<div class="panel panel-primary">
+<div class="panel-heading"><strong>Instructions</strong></div>
+
+<div class="panel-body">
+<p>This study is to support academic research. We appreciate you taking this task seriously, thank you. 
+</p>
+
+<p>For each of the following 100 face images, please answer the following 3 questions: 
+(1) whether the person's lips are parted, (2) what gender the individual appears, and (3) how masculine/feminine the face appears.
+</p>
+
+<p><b>WARNING:</b> there are test images to check that you are propely filling out the survey. 
+Your submission will be rejected if you give answers on test images that are CLEARLY wrong 
+(ie. you mark lips parted when the person's mouth is clearly closed. Only unambiguous images are used for the test images.)
+</p>
+</div>
+<hr>
+<div class="panel-body">
+<p>Your job is answer the following questions regarding this face image:</p></div>
+
+<img src="${image_url}" alt="loading...">
+<!-- End Instructions --><!-- Survey Body -->
+
+<section>
+<fieldset><label>1. TEST QUESTION: Are the individual's lips separated or together? </label>
+
+<div class="radio"><label><input name="Test" type="radio" value="separated" />Lips separated </label></div>
+
+<div class="radio"><label><input name="Test" type="radio" value="together" />Lips together </label></div>
+</fieldset>
+
+<fieldset><label>2. Does this individual's true gender appear to be most likely male or female? </label>
+
+<div class="radio"><label><input name="Gender" type="radio" value="Male" />Male </label></div>
+
+<div class="radio"><label><input name="Gender" type="radio" value="Female" />Female </label></div>
+</fieldset>
+
+
+<fieldset><label>3. Please rate how masculine/feminine that you think most people would consider this face: </label>
+
+<div class="radio"><label><input name="Rating" type="radio" value="0" />Very Masculine </label></div>
+<div class="radio"><label><input name="Rating" type="radio" value="1" />Masculine </label></div>
+<div class="radio"><label><input name="Rating" type="radio" value="2" />Somewhat Masculine </label></div>
+<div class="radio"><label><input name="Rating" type="radio" value="3" />Neutral</label></div>
+<div class="radio"><label><input name="Rating" type="radio" value="4" />Somewhat Feminine </label></div>
+<div class="radio"><label><input name="Rating" type="radio" value="5" />Feminine </label></div>
+<div class="radio"><label><input name="Rating" type="radio" value="6" />Very Feminine </label></div>
+</fieldset>
+
+</section>
+<!-- End Survey Body --></div>
+</section>
+<!-- close container -->
+<style type="text/css">fieldset { padding: 10px; background:#fbfbfb; border-radius:5px; margin-bottom:5px; }
+</style>

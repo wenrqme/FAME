@@ -1,0 +1,12 @@
+This is storage spot for mturk survey to get human ratings.
+
+images100.csv      - this is the URL of 100 randomly selected images. This file
+                     will be uploaded to the HIT in order to use the "variable
+                     technique".
+
+HIT.html           - this is a crude copy of the html code just in case gets lost.
+
+batch_results.csv  - this is the raw file of the results from mturk
+
+
+analyze.ipynb      -jupyter notebook to view simple results

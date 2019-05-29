@@ -1,0 +1,10 @@
+FAME (Facial Androgyny Measure & Estimation) is a tool that estimates the masculinity/femininity of a human face using facial landmark information from dlib. FAME uses a scale of 0 (most masculine) to 6 (most feminine). This can be helpful in examining how gender appearance on a scale affects behavior, rather than just considering binary gender.
+
+FAME was trained using linear regression (sklearn.linear_model.Lasso) with 10-fold cross validation. FAME used a sample of ~1100 images from the UTKFace dataset for training. The FAME ratings used for training were obtained from mturk workers. The training was done with FAME_training.py
+
+The coefficients and intercept of the trained model are located in the folder saved_model
+
+FAME_run.py runs the model on a set of 100 faces and its predictions for these are located in the folder predictions
+The files have URLS to view the face image.
+
+important_landmarks_v4.svg is a visual of the 8 landmarks with the highest magnitude weight from the training. It's not comprehensive of all the relevant landmarks.
