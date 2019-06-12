@@ -23,12 +23,15 @@ from sklearn.metrics import mean_squared_error
 #---------------------------------
 #Global Constants
 
-LANDMARK_FILE = 'landmarks/FAME_landmarks_100.csv'
+LANDMARK_FILE = 'landmarks/FAME_landmarks_100_scaled.csv'
 COEF_FILE = 'saved_model/linreg_coef.txt'
 INTERCEPT_FILE = 'saved_model/linreg_intercept.txt'
 SCALE_FACTORS_X = 'saved_model/scale_factors_x.txt'
 SCALE_FACTORS_Y = 'saved_model/scale_factors_y.txt'
 scale_y = False
+
+OUT_CSV = "predictions/linreg_predictions.csv"
+OUT_TXT = "predictions/linreg_predictions.txt"
 
 #---------------------------------
 
@@ -57,11 +60,11 @@ print(X)
 print(X.shape)
 
 #scale
-X -= scale_mean_x
-if all(scale_var_x > 0):
-    X /= scale_var_x
-else:
-    assert 0
+#X -= scale_mean_x
+#if all(scale_var_x > 0):
+    #X /= scale_var_x
+#else:
+    #assert 0
 
 if scale_y:
     scale_factors_y = np.loadtxt(SCALE_FACTORS_Y)
@@ -92,6 +95,6 @@ for i in range(len(prediction)):
 
 df_predictions = pd.DataFrame({'image_url': urls, 'prediction': prediction_format}, columns=['image_url', 'prediction'])
 print(df_predictions)
-df_predictions.to_csv("predictions/linreg_predictions.csv")
+df_predictions.to_csv(OUT_CSV)
 
-np.savetxt("predictions/linreg_predictions.txt", prediction)
+np.savetxt(OUT_TXT, prediction)

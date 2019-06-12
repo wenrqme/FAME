@@ -22,13 +22,14 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 from sklearn.preprocessing import scale
 from sklearn.metrics import mean_squared_error
+from IPython.display import display
 
 from sklearn.linear_model import Lasso
 
 #------------------------
 # GLOBAL CONST
 
-DATAFILE = 'landmarks/landmarks_merged.csv'
+DATAFILE = 'landmarks/landmarks_merged_scaled.csv'
 niter = 10
 
 # we will use sklearn LASSO model which has a hyhperparameter: alpha 
@@ -60,14 +61,13 @@ ave_train_rootmse = []
 
 x = df[features]
 
-#scale(x)
-mean = x.mean()
-var = x.var()
-x -= mean
-if all(var > 0):
-    x /= var
-else:
-    assert 0
+#scale(x) -- after scaling landmarks, comment out (x_31 all 0)
+#mean = x.mean()
+#var = x.var()
+#if all(var > 0):
+    #x /= var
+#else:
+    #assert 0
     
 y = df[target]
 
@@ -156,10 +156,11 @@ print('\n\nBest Test root MSE: ', root_mse)
 print('weights: ', best_model.coef_)
 print('intercept: ', best_model.intercept_)
 
-x_scale_factors = np.array([mean, var])
+#x_scale_factors = np.array([mean, var])
 #y_scale_factors = np.array([y_mean, y_var])
-np.savetxt('saved_model/scale_factors_x1.txt', x_scale_factors)
+#np.savetxt('saved_model/scale_factors_x.txt', x_scale_factors)
 #np.savetxt('scale_factors_y.txt', y_scale_factors)
+
 np.savetxt("saved_model/linreg_coef1.txt", best_model.coef_)
 np.savetxt("saved_model/linreg_intercept1.txt", np.array([best_model.intercept_]))
 
