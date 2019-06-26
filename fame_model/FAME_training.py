@@ -29,7 +29,10 @@ from sklearn.linear_model import Lasso
 #------------------------
 # GLOBAL CONST
 
-DATAFILE = 'landmarks/landmarks_merged_scaled.csv'
+DATAFILE = 'landmarks/FAME_landmarks_scaled.csv'
+OUT_COEF = 'saved_model/linreg_coef_1000.txt'
+OUT_INTERCEPT = 'saved_model/linreg_intercept_1000.txt'
+OUT_MSE = 'saved_model/mse_folds_1000.txt'
 niter = 10
 
 # we will use sklearn LASSO model which has a hyhperparameter: alpha 
@@ -79,6 +82,7 @@ y = df[target]
     #y /= y_var
 #else:
     #assert 0
+    
 
 # repeat KFold multiple times to get an even better estimate
 for i in range(niter):
@@ -161,7 +165,8 @@ print('intercept: ', best_model.intercept_)
 #np.savetxt('saved_model/scale_factors_x.txt', x_scale_factors)
 #np.savetxt('scale_factors_y.txt', y_scale_factors)
 
-np.savetxt("saved_model/linreg_coef1.txt", best_model.coef_)
-np.savetxt("saved_model/linreg_intercept1.txt", np.array([best_model.intercept_]))
+np.savetxt(OUT_COEF, best_model.coef_)
+np.savetxt(OUT_INTERCEPT, np.array([best_model.intercept_]))
+np.savetxt(OUT_MSE, ave_test_mse)
 
 print('goodbye')

@@ -24,8 +24,8 @@ from sklearn.metrics import mean_squared_error
 #Global Constants
 
 LANDMARK_FILE = 'landmarks/FAME_landmarks_100_scaled.csv'
-COEF_FILE = 'saved_model/linreg_coef.txt'
-INTERCEPT_FILE = 'saved_model/linreg_intercept.txt'
+COEF_FILE = 'saved_model/linreg_coef_1000.txt'
+INTERCEPT_FILE = 'saved_model/linreg_intercept_1000.txt'
 SCALE_FACTORS_X = 'saved_model/scale_factors_x.txt'
 SCALE_FACTORS_Y = 'saved_model/scale_factors_y.txt'
 scale_y = False
