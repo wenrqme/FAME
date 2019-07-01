@@ -29,10 +29,10 @@ from sklearn.linear_model import Lasso
 #------------------------
 # GLOBAL CONST
 
-DATAFILE = 'landmarks/landmarks_1000_scaled.csv'
-OUT_COEF = 'saved_model/linreg_coef.txt'
-OUT_INTERCEPT = 'saved_model/linreg_intercept.txt'
-OUT_MSE = 'saved_model/mse_folds.txt'
+DATAFILE = 'landmarks/upright_landmarks_1000_scaled.csv'
+OUT_COEF = 'saved_model/linreg_coef_v2.txt'
+OUT_INTERCEPT = 'saved_model/linreg_intercept_v2.txt'
+OUT_MSE = 'saved_model/mse_folds_v2.txt'
 niter = 10
 
 # we will use sklearn LASSO model which has a hyhperparameter: alpha 

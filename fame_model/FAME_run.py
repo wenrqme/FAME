@@ -23,9 +23,9 @@ from sklearn.metrics import mean_squared_error
 #---------------------------------
 #Global Constants
 
-LANDMARK_FILE = 'landmarks/landmarks_100_scaled.csv'
-COEF_FILE = 'saved_model/linreg_coef.txt'
-INTERCEPT_FILE = 'saved_model/linreg_intercept.txt'
+LANDMARK_FILE = 'landmarks/upright_landmarks_100_scaled.csv'
+COEF_FILE = 'saved_model/linreg_coef_v2.txt'
+INTERCEPT_FILE = 'saved_model/linreg_intercept_v2.txt'
 #SCALE_FACTORS_X = 'saved_model/scale_factors_x.txt'
 #SCALE_FACTORS_Y = 'saved_model/scale_factors_y.txt'
 scale_y = False
@@ -37,7 +37,7 @@ OUT_TXT = "predictions/linreg_predictions.txt"
 
 
 #load df,  coef_, and intercept_
-df = pd.read_csv(LANDMARK_FILE, index_col=[0])
+df = pd.read_csv(LANDMARK_FILE, index_col=['file'])
 coefficients = np.loadtxt(COEF_FILE)
 intercepts = np.loadtxt(INTERCEPT_FILE)
 #scale_factors_x = np.loadtxt(SCALE_FACTORS_X)

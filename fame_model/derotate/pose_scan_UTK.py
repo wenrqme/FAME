@@ -9,9 +9,15 @@ import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
 
-IN_OPENFACE = '../landmarks/landmarks_1000_scaled.csv'
+import shutil
+
+IN_OPENFACE = '../landmarks/landmarks_100_scaled.csv'
 OUT_FAILED = '../landmarks/failed_files_utk.csv'
-OUT_LANDMARKS = '../landmarks/upright_landmarks_1000_scaled.csv'
+OUT_LANDMARKS = '../landmarks/upright_landmarks_100_scaled.csv'
+
+IN_FOLDER = '../image_samples/sample_1/sample_1'
+OUT_FOLDER = '../image_samples/sample_1_bad/'
+
 
 
 df = pd.read_csv(IN_OPENFACE, skipinitialspace=True)
@@ -22,8 +28,8 @@ grouped = df.groupby(['file'])
 #print(type(grouped))
 
 CONF_THRESH = 0.90
-POSE_RX_THRESH = 7*np.pi/180
-POSE_RY_THRESH = 7*np.pi/180
+POSE_RX_THRESH = 10*np.pi/180
+POSE_RY_THRESH = 10*np.pi/180
 POSE_RZ_THRESH = 3*np.pi/180
 
 landmarks = pd.DataFrame(columns=df.columns)
@@ -56,5 +62,12 @@ print('count: ', count)
 print('total: ', total)
 #print(failed_files)
 
-landmarks.to_csv(OUT_LANDMARKS)
-pd.DataFrame(failed_files).to_csv(OUT_FAILED)
+#landmarks.to_csv(OUT_LANDMARKS)
+#pd.DataFrame(failed_files).to_csv(OUT_FAILED)
+
+#for f in failed_files:
+    #print(f)
+    #try:
+        #shutil.move(IN_FOLDER+f+'.jpg', OUT_FOLDER+f+'.jpg')
+    #except FileNotFoundError:
+        #print("file does not exist")
