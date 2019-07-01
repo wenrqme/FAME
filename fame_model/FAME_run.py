@@ -23,11 +23,11 @@ from sklearn.metrics import mean_squared_error
 #---------------------------------
 #Global Constants
 
-LANDMARK_FILE = 'landmarks/FAME_landmarks_100_scaled.csv'
-COEF_FILE = 'saved_model/linreg_coef_1000.txt'
-INTERCEPT_FILE = 'saved_model/linreg_intercept_1000.txt'
-SCALE_FACTORS_X = 'saved_model/scale_factors_x.txt'
-SCALE_FACTORS_Y = 'saved_model/scale_factors_y.txt'
+LANDMARK_FILE = 'landmarks/landmarks_100_scaled.csv'
+COEF_FILE = 'saved_model/linreg_coef.txt'
+INTERCEPT_FILE = 'saved_model/linreg_intercept.txt'
+#SCALE_FACTORS_X = 'saved_model/scale_factors_x.txt'
+#SCALE_FACTORS_Y = 'saved_model/scale_factors_y.txt'
 scale_y = False
 
 OUT_CSV = "predictions/linreg_predictions.csv"
@@ -40,13 +40,13 @@ OUT_TXT = "predictions/linreg_predictions.txt"
 df = pd.read_csv(LANDMARK_FILE, index_col=[0])
 coefficients = np.loadtxt(COEF_FILE)
 intercepts = np.loadtxt(INTERCEPT_FILE)
-scale_factors_x = np.loadtxt(SCALE_FACTORS_X)
+#scale_factors_x = np.loadtxt(SCALE_FACTORS_X)
 
-y = df["FAST_rating"]
+y = df["rating"]
 urls = np.array(df.index)
-scale_mean_x = scale_factors_x[0]
-scale_var_x = scale_factors_x[1]
-del df["FAST_rating"]
+#scale_mean_x = scale_factors_x[0]
+#scale_var_x = scale_factors_x[1]
+del df["rating"]
 print('data loaded')
 
 model = LinearRegression()
@@ -55,9 +55,11 @@ model.coef_ = np.array(coefficients)
 model.intercept_ = np.array(intercepts)
 model.classes_ = np.array([0,1]) #0 for male, 1 for female
 
-X = df.values
+all_features = list(df.columns.values)[2:]
+landmark_cols = [feat for feat in all_features if (('X_' in feat or 'Y_' in feat) and not 'eye' in feat)]
+features = landmark_cols
+X = df[features]
 print(X)
-print(X.shape)
 
 #scale
 #X -= scale_mean_x

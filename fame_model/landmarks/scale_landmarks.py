@@ -12,10 +12,10 @@ output file:
 import math
 import pandas as pd
 
-INPUT_FILE = 'landmarks_100_binarygenderlabels.csv'
-OUTPUT_FILE = 'landmarks_100_binarygenderlabels_scaled.csv'
+INPUT_FILE = 'landmarks_100.csv'
+OUTPUT_FILE = 'landmarks_100_scaled.csv'
 
-df = pd.read_csv(INPUT_FILE)
+df = pd.read_csv(INPUT_FILE, skipinitialspace=True)
 new_columns = df.columns.values
 new_columns[0] = 'file'
 df.columns = new_columns
@@ -23,29 +23,17 @@ df = df.set_index('file')
 
 print(df.columns)
 
-x_cols = []
-y_cols = []
-all_cols = []
+x_cols = [col for col in df.columns if 'X_' in col]
+y_cols = [col for col in df.columns if 'Y_' in col]
+all_cols = [col for col in df.columns if (('X_' in col or 'Y_' in col) and not 'eye' in col)]
 
-count = 0
-for col in df.columns:
-    if col == 'gender' or col == 'FAST_rating':
-        continue
-    elif count % 2 == 0:
-        x_cols.append(col)
-        all_cols.append(col)
-        count += 1
-    elif count % 2 != 0:
-        y_cols.append(col)
-        all_cols.append(col)
-        count += 1
 
 for i in df.index:
     print(i)
-    df.loc[i, x_cols] -= df.loc[i, 'x_31']
-    df.loc[i, y_cols] -= df.loc[i, 'y_31']
+    df.loc[i, x_cols] -= df.loc[i, 'X_30']
+    df.loc[i, y_cols] -= df.loc[i, 'Y_30']
     
-    difference = df.loc[i, 'x_43'] - df.loc[i, 'x_40']
+    difference = df.loc[i, 'X_42'] - df.loc[i, 'X_39']
     df.loc[i, all_cols] /= difference
     
 print(df)

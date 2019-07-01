@@ -1,0 +1,1 @@
+for %%F in ("*.mp4") do ffmpeg -i %%F -vf select='eq(n\,10)+eq(n\,400)+eq(n\,600)+eq(n\,800)+eq(n\,1000)' -vsync 0 "frames/%%~nF_frame%%03d.jpg"

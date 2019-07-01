@@ -29,10 +29,10 @@ from sklearn.linear_model import Lasso
 #------------------------
 # GLOBAL CONST
 
-DATAFILE = 'landmarks/FAME_landmarks_scaled.csv'
-OUT_COEF = 'saved_model/linreg_coef_1000.txt'
-OUT_INTERCEPT = 'saved_model/linreg_intercept_1000.txt'
-OUT_MSE = 'saved_model/mse_folds_1000.txt'
+DATAFILE = 'landmarks/landmarks_1000_scaled.csv'
+OUT_COEF = 'saved_model/linreg_coef.txt'
+OUT_INTERCEPT = 'saved_model/linreg_intercept.txt'
+OUT_MSE = 'saved_model/mse_folds.txt'
 niter = 10
 
 # we will use sklearn LASSO model which has a hyhperparameter: alpha 
@@ -44,11 +44,13 @@ alphas = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 3,10,100,1000]
 #------------------------------
 
 
-df = pd.read_csv(DATAFILE) # replace with file with human labeled data
+df = pd.read_csv(DATAFILE, skipinitialspace=True) # replace with file with human labeled data
 print('data loaded')
 
-features = list(df.columns.values)[2:]
-target = "FAST_rating"
+all_features = list(df.columns.values)[2:]
+landmark_cols = [feat for feat in all_features if (('X_' in feat or 'Y_' in feat) and not 'eye' in feat)]
+features = landmark_cols
+target = "rating"
 
 best_model = None
 best_mse = np.inf
