@@ -1,12 +1,16 @@
 """
 This contains all the necessary functions to set up, train, run, and test the FAME model
 
+if retraining everything, run logistic regression first (logreg_model/logreg.py)
+
 """
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.linear_model import Lasso
+from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
@@ -14,27 +18,112 @@ from sklearn.model_selection import KFold
 import glob
 import os
 
+COEF = 'saved_model/linreg_coef_v3.txt'
+INTERCEPT = 'saved_model/linreg_intercept_v3.txt'    
+
+COEF_LOGREG = "logreg_model/saved_model/full_coef_v2.txt"
+INTERCEPT_LOGREG = "logreg_model/saved_model/full_intercept_v2.txt"
+
+DECEP_CL = "landmarks/cmd_low_upright_scaled.csv"
+DECEP_CM = "landmarks/cmd_med_upright_scaled.csv"
+DECEP_VM = "landmarks/vol_med_upright_scaled.csv"
 
 def main():
-    landmarks = prepare_data("../mturk_surveys/survey2_mflikert/clean_results.csv", "landmarks/sample_2_lmk", "landmarks/UTK_openface_landmarks_1000.csv")
-    landmarks_scaled = scale_landmarks(landmarks, "landmarks/UTK_openface_landmarks_1000_scaled.csv")
-    landmarks_scaled_upright = scan_upright_files(landmarks_scaled, "landmarks/UTK_openface_landmarks_1000_scaled_upright.csv")
-    coef, intercept = train(landmarks_scaled_upright)
-    predictions = run_model("upright_landmarks_100_scaled.csv", coef_file, intercept_file, out_predictions)
-    accuracy, mse = test_performance(predictions, ratings_file, genders_file)
+    
+    prepare_decep_data()
+    
+    # function calls to train FAME and test it on the 100 face test set
+    landmarks = prepare_data("../mturk_surveys/survey2_mflikert/clean_results.csv", "landmarks/sample_2_lmk/", "landmarks/UTK_openface_landmarks_1000.csv")
+    landmarks_upright = scan_upright_files(landmarks, "landmarks/UTK_openface_landmarks_1000_upright.csv")
+    landmarks_upright_scaled = scale_landmarks(landmarks_upright, "landmarks/UTK_openface_landmarks_1000_scaled_upright.csv")
+    coef, intercept = train(landmarks_upright_scaled)
+    predictions = run_model("landmarks/upright_landmarks_100_scaled.csv", COEF, INTERCEPT, "predictions/linreg_predictions.csv")
+    accuracy, mse = test_performance(predictions, 'landmarks/landmarks_100.csv', 'landmarks/landmarks_100_binarygenderlabels.csv')
+    
     
     print("\n\n\n********************** SUMMARY **************************")
     print("100 face test set performance: ")
     print("accuracy: ", accuracy)
     print("mse: ", mse)
+    
+    run_decep_data(COEF, INTERCEPT)
+    
+
+#call this in the beginning so we only have to wait for scaling and scanning face landmarks once
+def prepare_decep_data():
+    landmarks_cls = pd.read_pickle("landmarks/cmd_low_frames_FAME.pkl.xz", compression='xz').rename(columns=lambda x: x.strip())
+    landmarks_cms = pd.read_pickle("landmarks/cmd_med_frames_FAME.pkl.xz", compression='xz').rename(columns=lambda x: x.strip())
+    landmarks_vms = pd.read_pickle("landmarks/vol_med_frames_FAME.pkl.xz", compression='xz').rename(columns=lambda x: x.strip())
+    
+    decep_landmarks_cls_upright = scan_upright_files(landmarks_cls, "landmarks/cmd_low_upright.csv")    
+    decep_landmarks_cms_upright = scan_upright_files(landmarks_cms, "landmarks/cmd_med_upright.csv")
+    decep_landmarks_vms_upright = scan_upright_files(landmarks_vms, "landmarks/vol_med_upright.csv")    
+    decep_landmarks_cls_scaled = scale_landmarks(decep_landmarks_cls_upright, "landmarks/cmd_low_upright_scaled.csv")
+    decep_landmarks_cms_scaled = scale_landmarks(decep_landmarks_cms_upright, "landmarks/cmd_med_upright_scaled.csv")
+    decep_landmarks_vms_scaled = scale_landmarks(decep_landmarks_vms_upright, "landmarks/vol_med_upright_scaled.csv")
+    
+
+#run the FAME and logistic regression models on the deception data and test the performcance
+def run_decep_data(coef, intercept):
+    predictions_cls = run_model(DECEP_CL, coef, intercept, "predictions/decep_predictions_cmd_low.csv")
+    predictions_cms = run_model(DECEP_CM, coef, intercept, "predictions/decep_predictions_cmd_med.csv")
+    predictions_vms = run_model(DECEP_VM, coef, intercept, "predictions/decep_predictions_vol_med.csv")
+    logreg_predictions_cls = run_logreg_model(DECEP_CL, COEF_LOGREG, INTERCEPT_LOGREG, "predictions/logreg_predictions_cmd_low.csv")
+    logreg_predictions_cms = run_logreg_model(DECEP_CM, COEF_LOGREG, INTERCEPT_LOGREG, "predictions/logreg_predictions_cmd_med.csv")
+    logreg_predictions_vms = run_logreg_model(DECEP_VM, COEF_LOGREG, INTERCEPT_LOGREG, "predictions/logreg_predictions_vol_med.csv")
+    
+    labels_cls = format_labels(predictions_cls, logreg_predictions_cls, "labels/labels_cmd_low.csv")
+    labels_cms = format_labels(predictions_cms, logreg_predictions_cms, "labels/labels_cmd_med.csv")
+    labels_vms = format_labels(predictions_vms, logreg_predictions_vms, "labels/labels_vol_med.csv")
+   
+    # test performance on these labels (may do differently from before because there's no logreg labels currently)
+    #TODO: add step to combine files (use combine_files())
+    labels_combined = combine_files(labels_cls, labels_cms, labels_vms)
+    df_labels =  decep_combine_gender_FAME(labels_combined) #temporarily just look at this one file
+    FAME_acc, FAME_acc_f, FAME_acc_m = decep_performance(df_labels, 'FAME')
+    logreg_acc, logreg_acc_f, logreg_acc_m = decep_performance(df_labels, 'logreg')   
+    
+    print("\n\n\n********************** DECEPTION SUMMARY **************************")
+    print("\ndeception data test set performance (FAME): ")
+    print("accuracy: ", FAME_acc)
+    print("accuracy females: ", FAME_acc_f)
+    print("accuracy males: ", FAME_acc_m)
+    
+    print("\ndeception data test set performance (logreg): ")
+    print("accuracy: ", logreg_acc)
+    print("accuracy females: ", logreg_acc_f)
+    print("accuracy males: ", logreg_acc_m)
+    
+
+def run_test_data(coef, intercept):
+    predictions = run_model("landmarks/upright_landmarks_100_scaled.csv", coef, intercept, "predictions/linreg_predictions_training.csv")
+    accuracy, mse = test_performance(predictions, 'landmarks/landmarks_100.csv', 'landmarks/landmarks_100_binarygenderlabels.csv')
+    
+    
+    print("\n\n\n********************** TEST SUMMARY **************************")
+    print("100 face test set performance: ")
+    print("accuracy: ", accuracy)
+    print("mse: ", mse)    
+
+
+# combines 3 csv files into one
+def combine_files(file_1, file_2, file_3):
+    df1 = pd.read_csv(file_1)
+    df2 = pd.read_csv(file_2)
+    df3 = pd.read_csv(file_3)
+    
+    df_combined = df1.append([df2, df3])
+    combined_file = "labels/decep_labels.csv"
+    df_combined.to_csv(combined_file)
+    return combined_file
 
 
 # linear regression training  L1 regularization and 10-fold cross validation
 # the model weights and intercept are saved to text files
 # takes in a scaled landmarks file
 def train(landmarks_file):
-    OUT_COEF = 'saved_model/linreg_coef_v3.txt'
-    OUT_INTERCEPT = 'saved_model/linreg_intercept_v3.txt'
+    #OUT_COEF = 'saved_model/linreg_coef_v3.txt'
+    #OUT_INTERCEPT = 'saved_model/linreg_intercept_v3.txt'
     OUT_MSE = 'saved_model/mse_folds_v3.txt'
     niter = 10
     
@@ -118,6 +207,16 @@ def train(landmarks_file):
                 best_mse = test_mse
                 root_mse = test_rootmse
                 best_model = lasso2
+            
+            
+            #test on test set and deception data
+            #save temporary coefficients and intercept
+            temp_coef = "saved_model/temp_coef.txt"
+            temp_intercept = "saved_model/temp_intercept.txt"
+            np.savetxt(temp_coef, np.array([lasso2.coef_]))
+            np.savetxt(temp_intercept, np.array([best_model.intercept_]))         
+            run_test_data(temp_coef, temp_intercept)
+            run_decep_data(temp_coef, temp_intercept)
     
     
     # convert to numPy arrays
@@ -140,23 +239,23 @@ def train(landmarks_file):
     print('weights: ', best_model.coef_)
     print('intercept: ', best_model.intercept_)
     
-    np.savetxt(OUT_COEF, best_model.coef_)
-    np.savetxt(OUT_INTERCEPT, np.array([best_model.intercept_]))
+    np.savetxt(COEF, best_model.coef_)
+    np.savetxt(INTERCEPT, np.array([best_model.intercept_]))
     np.savetxt(OUT_MSE, ave_test_mse)
-    return OUT_COEF, OUT_INTERCEPT
+    return COEF, INTERCEPT
 
 
 # runs the FAME model (from the coef and intercept files) on landmarks_file
 # and saves the predictions
-def run_model(landmarks_file, coef_file, intercept_file):
-    out_predictions = "predictions/linreg_predictions.csv"
+def run_model(landmarks_file, coef_file, intercept_file, out_predictions):
+    #out_predictions = "predictions/linreg_predictions.csv"
     #load df,  coef_, and intercept_
     df = pd.read_csv(landmarks_file, index_col=[0])
     coefficients = np.loadtxt(coef_file)
     intercepts = np.loadtxt(intercept_file)
     
     urls = np.array(df.index)
-    print('data loaded')
+    #print('data loaded')
     
     model = LinearRegression()
     coefficients = [coefficients]
@@ -164,12 +263,16 @@ def run_model(landmarks_file, coef_file, intercept_file):
     model.intercept_ = np.array(intercepts)
     model.classes_ = np.array([0,1]) #0 for male, 1 for female
     
-    X = df.values
-    print(X)
-    print(X.shape)
+    #X = df.values
+    all_features = list(df.columns.values)[2:]
+    landmark_cols = [feat for feat in all_features if (('X_' in feat or 'Y_' in feat) and not 'eye' in feat)]
+    features = landmark_cols 
+    X = df[features]
+    #print(X)
+    #print(X.shape)
     
     prediction = model.predict(X)
-    print("prediction: ", prediction)
+    #print("prediction: ", prediction)
     
     prediction_format = np.zeros(len(prediction))
     for i in range(len(prediction)):
@@ -177,65 +280,103 @@ def run_model(landmarks_file, coef_file, intercept_file):
     #print(prediction_format)
     
     df_predictions = pd.DataFrame({'image_url': urls, 'prediction': prediction_format}, columns=['image_url', 'prediction'])
-    print(df_predictions)
+    #print(df_predictions)
+    df_predictions.to_csv(out_predictions)
+    return out_predictions
+
+
+#run logreg model
+def run_logreg_model(landmarks_file, coef_file, intercept_file, out_predictions):
+    #load df,  coef_, and intercept_
+    df = pd.read_csv(landmarks_file, index_col=[0]) #use text.csv for 100 face file, test1000.csv for 1000 face file
+    coefficients = np.loadtxt(coef_file)
+    intercepts = np.loadtxt(intercept_file)
+    urls = np.array(df.index)
+    #print('data loaded')
+    
+    model = LogisticRegression()
+    coefficients = [coefficients]
+    model.coef_ = np.array(coefficients)
+    model.intercept_ = np.array(intercepts)
+    model.classes_ = np.array([0,1]) #0 for male, 1 for female
+    
+    all_features = list(df.columns.values)[2:]
+    landmark_cols = [feat for feat in all_features if (('X_' in feat or 'Y_' in feat) and not 'eye' in feat)]
+    features = landmark_cols 
+    X = df[features]
+    #print('\n')
+    #print(X)
+    #print(X.shape)
+    
+    prediction = model.predict_proba(X)
+    #print("\nprediction: ", prediction)
+    
+    prediction_format = np.zeros(len(prediction))
+    for i in range(len(prediction)):
+        prediction_format[i] = prediction[i][1] # predicstion gives [probability male, probability female]
+    #print(prediction_format)
+    
+    df_predictions = pd.DataFrame({'image_url': urls, 'prediction': prediction_format}, columns=['image_url', 'prediction'])
+    #print(df_predictions)
     df_predictions.to_csv(out_predictions)
     return out_predictions
     
     
 # combines the openface csv files and adds a column in front for for the FAME rating
 def prepare_data(FAME_ratings_file, openface_folder, output_landmark_file):
-    df_ratings = pd.read_csv(FAME_ratings_file)
+    df_ratings = pd.read_csv(FAME_ratings_file, skipinitialspace=True)
     df_ratings.set_index(['Image_filename'], inplace=True)
     
     list_ = []
     i = 1;
     
-    for file in glob.glob(openface_folder + "/*.csv"):
-        df = pd.read_csv(file, index_col=None, header=0)
+    for file in glob.glob(openface_folder + "*.csv"):
+        df = pd.read_csv(file, skipinitialspace=True, index_col=None, header=0)
         filename = os.path.splitext(file)[0][23:]
         print(filename)
         try:
             df.insert(0, 'gender', filename[3])
             df.insert(0, 'rating', df_ratings.loc[filename, 'Answer.Rating'])
-            df.insert(0, 'file', filename)
+            df.insert(0, 'Filename', filename)
             list_.append(df)
         except KeyError:
             print("not in mturk file")
-        print(i)
+        #print(i)
         i += 1
         
     landmarks = pd.concat(list_, axis = 0, ignore_index = True)
-    print(len(landmarks))
+    #print(len(landmarks))
     
     landmarks.to_csv(output_landmark_file, encoding='utf-8',index=False)
-    return output_landmark_file
+    return landmarks
     
 
 # scales the landmarks from openface, centering the face around the nose,
 # and using the distance between the eyes as a reference for the size of the face.
-def scale_landmarks(landmark_file, scaled_landmark_file):
-    df = pd.read_csv(landmark_file, skipinitialspace=True)
+def scale_landmarks(landmarks_df, scaled_landmark_file):
+    df = landmarks_df
+
     new_columns = df.columns.values
-    new_columns[0] = 'file'
+    new_columns[0] = 'Filename'
     df.columns = new_columns
-    df = df.set_index('file')
+    df = df.set_index('Filename')
     
-    print(df.columns)
+    #print(df.columns)
     
     x_cols = [col for col in df.columns if 'X_' in col]
     y_cols = [col for col in df.columns if 'Y_' in col]
     all_cols = [col for col in df.columns if (('X_' in col or 'Y_' in col) and not 'eye' in col)]
-    
+    #print(all_cols)
     
     for i in df.index:
-        print(i)
+        #print(i)
         df.loc[i, x_cols] -= df.loc[i, 'X_30']
         df.loc[i, y_cols] -= df.loc[i, 'Y_30']
         
         difference = df.loc[i, 'X_42'] - df.loc[i, 'X_39']
         df.loc[i, all_cols] /= difference
         
-    print(df)
+    #print(df)
     df.to_csv(scaled_landmark_file)
     return scaled_landmark_file
     
@@ -262,7 +403,7 @@ def format_labels(linreg_pred, logreg_pred, out_labels):
     
     #add average column
     df1_ave = df1_new.copy()
-    df1_ave['FAME_average'] = df1_ave.mean(numeric_only=True, axis=1)
+    df1_ave['FAME'] = df1_ave.mean(numeric_only=True, axis=1)
     df1_ave['FAME_variance'] = df1_ave.var(numeric_only=True, axis=1)
     #print(df1_new)
     
@@ -278,23 +419,25 @@ def format_labels(linreg_pred, logreg_pred, out_labels):
             .reset_index())
     
     df2_ave = df2_new.copy()
-    df2_ave['logreg_average'] = df2_ave.mean(numeric_only=True, axis=1)
+    df2_ave['logreg'] = df2_ave.mean(numeric_only=True, axis=1)
     df2_ave['logreg_variance'] = df2_ave.var(numeric_only=True, axis=1)
     
     #concatenate them
     df3 = pd.concat([df1_ave, df2_ave], axis = 1)
     df3 = df3.loc[:,~df3.columns.duplicated()]
-    print(df3)
+    #print(df3)
     
     df3.to_csv(out_labels)
     return out_labels
     
 
 #scan for upright face files
-def scan_upright_files(in_openface_landmarks, out_landmarks):
-    df = pd.read_csv(in_openface_landmarks, skipinitialspace=True)
+def scan_upright_files(in_openface_landmarks_df, out_landmarks):
+    df = in_openface_landmarks_df
     #print(df.head())
-    grouped = df.groupby(['file'])
+    df.rename(columns={'file':'Filename'})
+    #print(df.columns)
+    grouped = df.groupby(['Filename'])
     #display(grouped.first())
     #print(type(grouped.get_group('2018-02-17_14-33-35-477-I-T-kingferry_openface.csv')))
     #print(type(grouped))
@@ -317,7 +460,7 @@ def scan_upright_files(in_openface_landmarks, out_landmarks):
         count_for_file = 0
         for index, row in df.iterrows():
             if (row['confidence'] > CONF_THRESH) and  (np.absolute(row['pose_Rx']) < POSE_RX_THRESH) and (np.absolute(row['pose_Ry']) < POSE_RY_THRESH) and (np.absolute(row['pose_Rz']) < POSE_RZ_THRESH):
-                print('index: ', index)
+                #print('index: ', index)
                 print(index, name)
                 landmarks.loc[count] = row #is this possible?
                 count += 1
@@ -335,19 +478,23 @@ def scan_upright_files(in_openface_landmarks, out_landmarks):
     #print(failed_files)
     
     landmarks.to_csv(out_landmarks)
-    return out_landmarks
+    pd.DataFrame(failed_files).to_csv(out_landmarks + '-FAILED.csv')
+    return landmarks
 
 
 # look at the performance of linear regression on FAME ratings
 def test_performance(predictions_file, ratings_file, genders_file):
     #load data from files
-    df_predictions = pd.read_csv(PREDICTIONS_FILE)
-    df_lm_fast = pd.read_csv(TRUE_RATINGS_FILE)
-    df_lm_gender = pd.read_csv(TRUE_GENDERS_FILE)
+    df_predictions = pd.read_csv(predictions_file)
+    df_lm_fast = pd.read_csv(ratings_file)
+    df_lm_gender = pd.read_csv(genders_file)
     df_ratings = df_lm_fast['rating']
     df_true_gender = df_lm_gender['gender']
     
-    df = pd.concat([df_predictions, df_ratings, df_true_gender], axis = 1)   
+    df = pd.concat([df_predictions, df_ratings, df_true_gender], axis = 1)
+    
+    #is there a non manual way to concatrnate df of different sizes?
+    df = df [:60]
     
     #Look at accuracy at predicting gender, using <3.5 as male and >3.5 as female
     _sum = 0
@@ -356,17 +503,17 @@ def test_performance(predictions_file, ratings_file, genders_file):
             _sum += 1
     accuracy = _sum/len(df.index)
     
-    print(accuracy)   
+    #print(accuracy)   
     
     #Look at MSE separately for males and females
     
     df_m= df.loc[df['gender'] == 0] #males
     mse_m = mean_squared_error(df_m['rating'], df_m['prediction'])
-    print("\nmale mean squared error: ", mse_m)
+    #print("\nmale mean squared error: ", mse_m)
     
     df_f= df.loc[df['gender'] == 1] #females
     mse_f = mean_squared_error(df_f['rating'], df_f['prediction'])
-    print("female mean squared error: ", mse_f)
+    #print("female mean squared error: ", mse_f)
     
     mse_all = mean_squared_error(df['rating'], df['prediction'])
     print("both mean squared error: ", mse_all)
@@ -377,9 +524,9 @@ def test_performance(predictions_file, ratings_file, genders_file):
     f_var = df_f['prediction'].var()
     m_var = df_m['prediction'].var()
     
-    print('\nvariance: ', all_var, 
-          '\nvariance males: ', m_var, 
-          '\nvariance females: ', f_var)
+    #print('\nvariance: ', all_var, 
+    #      '\nvariance males: ', m_var, 
+    #      '\nvariance females: ', f_var)
     
     return accuracy, mse_all
 
@@ -387,23 +534,29 @@ def test_performance(predictions_file, ratings_file, genders_file):
 # make a dataframe that has all the information about gender and FAME scores of the data
 # fro use later in performance testing
 def decep_combine_gender_FAME(labels_file):
-    GENDER_FILE_1 = 'gender_data.csv'
-    GENDER_FILE_2 = 'old_data.csv'
-    GENDER_FILE_3 = 'hs_avg.csv'
+    GENDER_FILE_1 = 'labels/gender_data.csv'
+    GENDER_FILE_2 = 'labels/old_data.csv'
+    GENDER_FILE_3 = 'labels/hs_avg.csv'
     
     # load data
     
-    df_labels = pd.read_csv(LABELS_FILE)
+    all_labels = pd.read_csv(labels_file)
+    df_labels = all_labels[['image_filename', 'FAME', 'logreg']] #only look at final FAME and logreg scores
+    df_labels.to_csv("labels/decep_labels_FAME.csv")
     df_1 = pd.read_csv(GENDER_FILE_1)
     df_2 = pd.read_csv(GENDER_FILE_2)
     df_3 = pd.read_csv(GENDER_FILE_3, skipinitialspace=True)
-    print('data loaded')
+    #print('data loaded')
     
-    df_labels['filename'] = df_labels['image_filename'].str.split('\\').str[1]
-    df_labels['root'] = df_labels['filename'].str.rsplit('-', 3).str[0]
-    df_labels['user_id'] = df_labels['filename'].str.rsplit('-', 1).str[1]
-    df_i = df_labels[df_labels['filename'].str.contains('I')] # interrogator
-    df_w = df_labels[df_labels['filename'].str.contains('W')] # witness
+    #Future warning, this line is to temporarily fix the SettingWithCopyWarning: A value is trying to be set on a copy of a slice from a DataFrame.
+    df_labels.is_copy = False
+    
+    #df_labels['filename'] = df_labels['image_filename'].str.split('\\').str[1]
+    df_labels['root'] = df_labels['image_filename'].str.rsplit('-', 3).str[0]
+    df_labels['user_id'] = df_labels['image_filename'].str.rsplit('-', 1).str[1]
+    #print(df_labels)
+    df_i = df_labels[df_labels['image_filename'].str.contains('I')] # interrogator
+    df_w = df_labels[df_labels['image_filename'].str.contains('W')] # witness
     
     df_gender = pd.concat([df_1, df_2])
     df_gender.set_index(['root'], inplace=True)    
@@ -415,7 +568,7 @@ def decep_combine_gender_FAME(labels_file):
     #display(file_genders)
     
     # low stakes labels
-    df_4 = pd.read_csv('commanded_low_stakes_genders.csv')
+    df_4 = pd.read_csv('labels/commanded_low_stakes_genders.csv')
     gender_dict =  pd.Series(df_4['is_male'].values, index=df_4['filename'].str.rsplit('-', 1).str[1].str.split('.').str[0]).to_dict()
     file_genders.update(gender_dict)
     
@@ -427,60 +580,63 @@ def decep_combine_gender_FAME(labels_file):
     count = 0
     
     for i in df_labels.index:
-        try:
-            df_labels.loc[i, 'FAME_621'] = df_621.loc[df_labels.loc[i,'image_filename'], 'FAME']
-        except KeyError:
-                print('not in table: ', df_labels.loc[i,'root'])
-        if df_labels['filename'].str.contains('I')[i]:
+        if df_labels['image_filename'].str.contains('I')[i]:
             try:
                 df_labels.loc[i, 'is_male'] = df_gender.loc[df_labels.loc[i,'root'], 'interrogator_is_male']
                 count += 1
             except KeyError:
-                print('not in table: ', df_labels.loc[i,'root'])
-            print('i')
-        elif df_labels['filename'].str.contains('W')[i]:
+                #print('not in table: ', df_labels.loc[i,'root'])
+                continue
+            #print('i')
+        elif df_labels['image_filename'].str.contains('W')[i]:
             try:
                 df_labels.loc[i, 'is_male'] = df_gender.loc[df_labels.loc[i,'root'], 'witness_is_male']
                 count += 1
             except KeyError:
-                print('not in table: ', df_labels.loc[i,'root'])
-            print('w')
+                #print('not in table: ', df_labels.loc[i,'root'])
+                continue
+            #print('w')
     
-    print(count)
+    #print(count)
     return df_labels
     
 
 # look at how well fame did in scoring the deception data
-def decep_performance(df_labels):
+# model can be either 'FAME' or 'logreg'
+def decep_performance(df_labels, model):
     # Look at variance off scores for males and females
     
     # females
     df_f= df_labels.loc[df_labels['is_male'] == 0]
-    var_f = df_f['FAME'].var()
-    mean_f = df_f['FAME'].mean()
-    print('variance females: ', var_f, '\nmean females: ', mean_f)
+    var_f = df_f[model].var()
+    mean_f = df_f[model].mean()
+    #print('variance females: ', var_f, '\nmean females: ', mean_f)
     
     # males
     df_m= df_labels.loc[df_labels['is_male'] == 1]
-    var_m = df_m['FAME'].var()
-    mean_m = df_m['FAME'].mean()
-    print('variance males: ', var_m, '\nmean males: ', mean_m)
+    var_m = df_m[model].var()
+    mean_m = df_m[model].mean()
+    #print('variance males: ', var_m, '\nmean males: ', mean_m)
     
-    print('overall mean: ', df_labels['FAME'].mean())    
+    overall_mean = df_labels[model].mean()
+    print('overall mean: ', overall_mean)    
     
-    #Look at accuracy at predicting gender, using <3.5 as male and >3.5 as female
-    #NOTE this is with the cutoff lowered to 2.5 for being female, based on average FAME scpre found above
-    #currently written messily because we don't have all gender labels in df_labels yet
+    #Look at accuracy at predicting gender, using <mean as male and >mean as female
+    #for logreg, 0.5 is the cutoff
+    cutoff = 0.5
+    if model == "FAME":
+        cutoff = overall_mean
+    print("cutoff: ", cutoff)
     
     _sum = 0
     _sum_f = 0
     _sum_m = 0
     for i in df_f.index:
-        if (df_f.loc[i, 'FAME'] >= 2.54 and df_f.loc[i, 'is_male'] == 0):
+        if (df_f.loc[i, model] >= cutoff and df_f.loc[i, 'is_male'] == 0):
             _sum += 1
             _sum_f += 1
     for i in df_m.index:
-        if (df_m.loc[i, 'FAME'] < 2.54 and df_m.loc[i, 'is_male'] == 1):
+        if (df_m.loc[i, model] < cutoff and df_m.loc[i, 'is_male'] == 1):
             _sum += 1
             _sum_m += 1
     accuracy = _sum/(len(df_f.index)+len(df_m.index))
@@ -488,9 +644,9 @@ def decep_performance(df_labels):
     accuracy_f = _sum_f/len(df_f.index)
     accuracy_m = _sum_m/len(df_m.index)
     
-    print(accuracy)
-    print("f: ", accuracy_f)
-    print("m: ", accuracy_m)
+    #print(accuracy)
+    #print("f: ", accuracy_f)
+    #print("m: ", accuracy_m)
     
     return accuracy, accuracy_f, accuracy_m
 

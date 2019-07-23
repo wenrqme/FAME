@@ -15,7 +15,7 @@ IN_OPENFACE = '../landmarks/landmarks_100_scaled.csv'
 OUT_FAILED = '../landmarks/failed_files_utk.csv'
 OUT_LANDMARKS = '../landmarks/upright_landmarks_100_scaled.csv'
 
-IN_FOLDER = '../image_samples/sample_1/sample_1'
+IN_FOLDER = '../image_samples/sample_1/sample_1/'
 OUT_FOLDER = '../image_samples/sample_1_bad/'
 
 
@@ -62,12 +62,12 @@ print('count: ', count)
 print('total: ', total)
 #print(failed_files)
 
-#landmarks.to_csv(OUT_LANDMARKS)
+landmarks.to_csv(OUT_LANDMARKS)
 #pd.DataFrame(failed_files).to_csv(OUT_FAILED)
 
-#for f in failed_files:
-    #print(f)
-    #try:
-        #shutil.move(IN_FOLDER+f+'.jpg', OUT_FOLDER+f+'.jpg')
-    #except FileNotFoundError:
-        #print("file does not exist")
+for f in failed_files:
+    print(f)
+    try:
+        shutil.move(IN_FOLDER+f+'.jpg', OUT_FOLDER+f+'.jpg')
+    except FileNotFoundError:
+        print("file does not exist")
