@@ -598,6 +598,7 @@ def decep_combine_gender_FAME(labels_file):
             #print('w')
     
     #print(count)
+    df_labels.to_csv("labels/decep_gender_labels.csv")
     return df_labels
     
 
