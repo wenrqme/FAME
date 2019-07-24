@@ -5,6 +5,9 @@ FAME was trained using linear regression (sklearn.linear_model.Lasso) with 10-fo
 
 ## Contents
 
+### input files:
+  
+
 ### fame_model:
 **FAME_training.py**: used for training the FAME model. Input is a landmark file. Outputs a coefficient, intercept, and scale factors file, located in the folder **saved_model**.
 

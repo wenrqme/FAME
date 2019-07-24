@@ -1,7 +1,28 @@
 """
-This contains all the necessary functions to set up, train, run, and test the FAME model
+This contains all the necessary functions to set up, train, run, and test the 
+FAME (manually labelled scale model).
 
-if retraining everything, run logistic regression first (logreg_model/logreg.py)
+The input consists of 1000 manually labeled face images from the UTK dataset,
+each face being labeled by 5 different judges. Only the averaged score is used.
+
+If retraining everything, run logistic regression first (logreg_model/logreg.py)
+
+Each file of deception data is treated independently.
+
+This program uses the following input files:
+    'saved_model/linreg_coef_v3.txt'
+    'saved_model/linreg_intercept_v3.txt'    
+    'logreg_model/saved_model/full_coef_v2.txt'
+    'logreg_model/saved_model/full_intercept_v2.txt"
+    
+    # scaled deception data - first frame that is within tolerance (N~=370)
+    "landmarks/cmd_low_upright_scaled.csv" 
+    "landmarks/cmd_med_upright_scaled.csv"
+    "landmarks/vol_med_upright_scaled.csv"
+
+it generates the following outputs:
+    gedner labels, MSE, accuracy, mean of UTK test set
+    gender labels, accuracy, mean of the deception data
 
 """
 
@@ -18,6 +39,7 @@ from sklearn.model_selection import KFold
 import glob
 import os
 
+# INPUT FILES
 COEF = 'saved_model/linreg_coef_v3.txt'
 INTERCEPT = 'saved_model/linreg_intercept_v3.txt'    
 
@@ -28,18 +50,36 @@ DECEP_CL = "landmarks/cmd_low_upright_scaled.csv"
 DECEP_CM = "landmarks/cmd_med_upright_scaled.csv"
 DECEP_VM = "landmarks/vol_med_upright_scaled.csv"
 
+
 def main():
-    
+    """ """    
     prepare_decep_data()
     
-    # function calls to train FAME and test it on the 100 face test set
-    landmarks = prepare_data("../mturk_surveys/survey2_mflikert/clean_results.csv", "landmarks/sample_2_lmk/", "landmarks/UTK_openface_landmarks_1000.csv")
-    landmarks_upright = scan_upright_files(landmarks, "landmarks/UTK_openface_landmarks_1000_upright.csv")
-    landmarks_upright_scaled = scale_landmarks(landmarks_upright, "landmarks/UTK_openface_landmarks_1000_scaled_upright.csv")
-    coef, intercept = train(landmarks_upright_scaled)
-    predictions = run_model("landmarks/upright_landmarks_100_scaled.csv", COEF, INTERCEPT, "predictions/linreg_predictions.csv")
-    accuracy, mse = test_performance(predictions, 'landmarks/landmarks_100.csv', 'landmarks/landmarks_100_binarygenderlabels.csv')
+    # Function calls to train FAME (1000 faces) and test it (100 faces)
+    landmarks = prepare_data(
+        "../mturk_surveys/survey2_mflikert/clean_results.csv", 
+        "landmarks/sample_2_lmk/", 
+        "landmarks/UTK_openface_landmarks_1000.csv")
     
+    landmarks_upright = scan_upright_files(
+        landmarks, 
+        "landmarks/UTK_openface_landmarks_1000_upright.csv")
+    
+    landmarks_upright_scaled = scale_landmarks(
+        landmarks_upright, 
+        "landmarks/UTK_openface_landmarks_1000_scaled_upright.csv")
+    
+    coef, intercept = train(landmarks_upright_scaled)
+    
+    predictions = run_model("landmarks/upright_landmarks_100_scaled.csv",
+                            COEF, 
+                            INTERCEPT, 
+                            "predictions/linreg_predictions.csv")
+    
+    accuracy, mse = test_performance(
+        predictions, 
+        'landmarks/landmarks_100.csv', 
+        'landmarks/landmarks_100_binarygenderlabels.csv')
     
     print("\n\n\n********************** SUMMARY **************************")
     print("100 face test set performance: ")
@@ -49,22 +89,41 @@ def main():
     run_decep_data(COEF, INTERCEPT)
     
 
-#call this in the beginning so we only have to wait for scaling and scanning face landmarks once
+
 def prepare_decep_data():
-    landmarks_cls = pd.read_pickle("landmarks/cmd_low_frames_FAME.pkl.xz", compression='xz').rename(columns=lambda x: x.strip())
-    landmarks_cms = pd.read_pickle("landmarks/cmd_med_frames_FAME.pkl.xz", compression='xz').rename(columns=lambda x: x.strip())
-    landmarks_vms = pd.read_pickle("landmarks/vol_med_frames_FAME.pkl.xz", compression='xz').rename(columns=lambda x: x.strip())
-    
-    decep_landmarks_cls_upright = scan_upright_files(landmarks_cls, "landmarks/cmd_low_upright.csv")    
-    decep_landmarks_cms_upright = scan_upright_files(landmarks_cms, "landmarks/cmd_med_upright.csv")
-    decep_landmarks_vms_upright = scan_upright_files(landmarks_vms, "landmarks/vol_med_upright.csv")    
-    decep_landmarks_cls_scaled = scale_landmarks(decep_landmarks_cls_upright, "landmarks/cmd_low_upright_scaled.csv")
-    decep_landmarks_cms_scaled = scale_landmarks(decep_landmarks_cms_upright, "landmarks/cmd_med_upright_scaled.csv")
-    decep_landmarks_vms_scaled = scale_landmarks(decep_landmarks_vms_upright, "landmarks/vol_med_upright_scaled.csv")
+    """ Loads deception data, scans for low pose, scales.
+    Call this in the beginning so we only have to wait for scaling and scanning 
+    face landmarks once
+    """
+    if not os.path.exists('landmarks/cmd_low_upright_scaled.csv'):
+        landmarks_cls = pd.read_pickle("landmarks/cmd_low_frames_FAME.pkl.xz", 
+            compression='xz').rename(columns=lambda x: x.strip())
+        decep_landmarks_cls_upright = scan_upright_files(
+            landmarks_cls, "landmarks/cmd_low_upright.csv")    
+        decep_landmarks_cls_scaled = scale_landmarks(
+            decep_landmarks_cls_upright, "landmarks/cmd_low_upright_scaled.csv")
+        
+    if not os.path.exists('landmarks/cmd_med_upright_scaled.csv'):
+        landmarks_cms = pd.read_pickle("landmarks/cmd_med_frames_FAME.pkl.xz", 
+            compression='xz').rename(columns=lambda x: x.strip())
+        decep_landmarks_cms_upright = scan_upright_files(
+            landmarks_cms, "landmarks/cmd_med_upright.csv")   
+        decep_landmarks_cms_scaled = scale_landmarks(
+            decep_landmarks_cms_upright, "landmarks/cmd_med_upright_scaled.csv")
+   
+    if not os.path.exists('landmarks/vol_med_upright_scaled.csv'):
+        landmarks_vms = pd.read_pickle(
+            "landmarks/vol_med_frames_FAME.pkl.xz", compression='xz').rename(
+                columns=lambda x: x.strip())
+        decep_landmarks_vms_upright = scan_upright_files(
+            landmarks_vms, "landmarks/vol_med_upright.csv")    
+        decep_landmarks_vms_scaled = scale_landmarks(
+            decep_landmarks_vms_upright, "landmarks/vol_med_upright_scaled.csv")
     
 
-#run the FAME and logistic regression models on the deception data and test the performcance
 def run_decep_data(coef, intercept):
+    """ #run the FAME and logistic regression models on the deception data and test the performcance
+    """
     predictions_cls = run_model(DECEP_CL, coef, intercept, "predictions/decep_predictions_cmd_low.csv")
     predictions_cms = run_model(DECEP_CM, coef, intercept, "predictions/decep_predictions_cmd_med.csv")
     predictions_vms = run_model(DECEP_VM, coef, intercept, "predictions/decep_predictions_vol_med.csv")
@@ -322,8 +381,9 @@ def run_logreg_model(landmarks_file, coef_file, intercept_file, out_predictions)
     return out_predictions
     
     
-# combines the openface csv files and adds a column in front for for the FAME rating
 def prepare_data(FAME_ratings_file, openface_folder, output_landmark_file):
+    """ Combines the openface csv files and adds a column in front for the
+        FAME rating """
     df_ratings = pd.read_csv(FAME_ratings_file, skipinitialspace=True)
     df_ratings.set_index(['Image_filename'], inplace=True)
     
